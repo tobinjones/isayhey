@@ -23,12 +23,6 @@
     };
   };
 
-  # Disclaimer: Uv2nix is new and experimental.
-  # Users are expected to be able to contribute fixes.
-  #
-  # Note that uv2nix is _not_ using Nixpkgs buildPythonPackage.
-  # It's using https://nix-community.github.io/pyproject.nix/build.html
-
   outputs =
     {
       nixpkgs,
@@ -91,7 +85,7 @@
       # Package a virtual environment as our main application.
       #
       # Enable no optional dependencies for production build.
-      packages.x86_64-linux.default = pythonSet.mkVirtualEnv "hello-world-env" workspace.deps.default;
+      packages.x86_64-linux.default = pythonSet.mkVirtualEnv "venv" workspace.deps.default;
 
       # This example provides two different modes of development:
       # - Impurely using uv to manage virtual environments
@@ -108,42 +102,6 @@
             unset PYTHONPATH
           '';
         };
-
-        # This devShell uses uv2nix to construct a virtual environment purely from Nix, using the same dependency specification as the application.
-        # The notable difference is that we also apply another overlay here enabling editable mode ( https://setuptools.pypa.io/en/latest/userguide/development_mode.html ).
-        #
-        # This means that any changes done to your local files do not require a rebuild.
-        uv2nix =
-          let
-            # Create an overlay enabling editable mode for all local dependencies.
-            editableOverlay = workspace.mkEditablePyprojectOverlay {
-              # Use environment variable
-              root = "$REPO_ROOT";
-              # Optional: Only enable editable for these packages
-              # members = [ "hello-world" ];
-            };
-
-            # Override previous set with our overrideable overlay.
-            editablePythonSet = pythonSet.overrideScope editableOverlay;
-
-            # Build virtual environment, with local packages being editable.
-            #
-            # Enable all optional dependencies for development.
-            virtualenv = editablePythonSet.mkVirtualEnv "hello-world-dev-env" workspace.deps.all;
-
-          in
-          pkgs.mkShell {
-            packages = [
-              virtualenv
-              pkgs.uv
-            ];
-            shellHook = ''
-              # Undo dependency propagation by nixpkgs.
-              unset PYTHONPATH
-              # Get repository root using git. This is expanded at runtime by the editable `.pth` machinery.
-              export REPO_ROOT=$(git rev-parse --show-toplevel)
-            '';
-          };
       };
     };
 }
